@@ -22,30 +22,37 @@ class DbHandler {
      * @param String $password User login password
      * @return boolean User login status success/fail
      */
-    public function checkLogin($email, $password) {
-        // fetching user by email
-        $stmt = $this->conn->prepare("select `first_name`,`last_name`,`mobile_number` FROM ch_register_profile_master where name = '$email' and password = '$password' ORDER BY first_name");
-       // $stmt->bind_param("s", $email);
-        $stmt->execute();
-        $stmt->bind_result($password_hash);
-        $stmt->store_result();
-        if ($stmt->num_rows > 0) {
-            // Found user with the email
-            // Now verify the password
-            $stmt->fetch();
-            $stmt->close();
-            if (PassHash::check_password($password_hash, $password)) {
-                // User password is correct
-                return TRUE;
-            } else {
-                // user password is incorrect
-                return FALSE;
-            }
-        } else {
-            $stmt->close();
-            // user not existed with the email
-            return FALSE;
+    public function checkLogin($userName, $passwordInReq) {
+
+        $query = "select user_name,password FROM ch_register_profile_master WHERE user_name = :username OR email_id = :emailId OR mobile_number = :mobileNo ORDER BY first_name";
+        
+     //  echo  $query;      
+        $db = DB::getInstance();
+        $s = $db->prepare($query);
+             
+      	$s->bindParam(':username', $userName , PDO::PARAM_STR);
+        $s->bindParam(":emailId", $userName,PDO::PARAM_STR);
+        $s->bindParam(":mobileNo", $userName,PDO::PARAM_STR);
+        
+        $s->execute();
+       // echo $s->fetchColumn(0);
+        $num_rows = $s->rowCount();
+
+        if ($num_rows > 0)
+        {
+        	$password_hash = $s->fetchColumn(1);
+        	//echo '1';
+        	if (passwordHash::check_password($password_hash,$passwordInReq)) {
+        		// User password is correct
+        		//echo 'correct';
+        		return TRUE;
+        	} else {
+        		// user password is incorrect
+        		//echo 'notcorrect';
+        		return FALSE;
+        	}
         }
+        
     }
     /**
      * Checking for duplicate user by email address

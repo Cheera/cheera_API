@@ -67,6 +67,11 @@ class profile_master extends model {
 	function getLastOpUser(){
 		return $this->getColumnValue('LAST_OP_USER_NAME');
 	}
+	
+	function getProfileId(){
+		return $this->getColumnValue('PROFILE_ID');
+	}
+	
 }
 
 /* function __autoload($className){

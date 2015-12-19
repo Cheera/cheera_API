@@ -9,4 +9,6 @@ define('DB_NAME', 'cheeradevdb');
 
 define('DB_DSN', 'mysql:host=localhost;dbname=cheeradevdb');
 
+define('sessionExp', '2');
+
 ?>

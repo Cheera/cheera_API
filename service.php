@@ -13,9 +13,11 @@ require_once 'Slim/Slim.php';
 
 $app = new \Slim\Slim ();
 
+//https://en.wikipedia.org/wiki/List_of_HTTP_status_codes
+
 // $app->post('/login', 'loginOpn');
 
-$app->post ( '/signUp', function () use($app) {
+$app->post ( '/signUp', 'authenticate',function () use($app) {
 	
 	// check for required params
 	verifyRequiredParams ( array (
@@ -27,7 +29,7 @@ $app->post ( '/signUp', function () use($app) {
 			'Password',
 			'gender' 
 	) );
-	$response = array ();
+	$response = array ();	
 	// reading post params
 	$firstName = $app->request->post ( 'firstName' );
 	$surName = $app->request->post ( 'surName' );
@@ -38,6 +40,8 @@ $app->post ( '/signUp', function () use($app) {
 	$gender = $app->request->post ( 'gender' );
 	
 	$password_hash = passwordHash::hash ( $password );
+	
+	echo $password_hash;
 	
 	// validating email address
 	// validateEmail($email);
@@ -82,7 +86,7 @@ $app->post ( '/signUp', function () use($app) {
 	jsonResponse ( 200, $response );
 } );
 
-$app->post ( '/profPersonalDetails', function () use($app) {
+$app->post ( '/profPersonalDetails', 'authenticate', function () use($app) {
 	
 	// check for required params
 	verifyRequiredParams ( array (
@@ -163,7 +167,7 @@ $app->post ( '/profPersonalDetails', function () use($app) {
 	jsonResponse ( 200, $response );
 } );
 
-$app->post ( '/profCareerDetails', function () use($app) {
+$app->post ( '/profCareerDetails', 'authenticate', function () use($app) {
 	
 	// check for required params
 	verifyRequiredParams ( array (
@@ -234,7 +238,7 @@ $app->post ( '/profCareerDetails', function () use($app) {
 	jsonResponse ( 200, $response );
 } );
 
-$app->post ( '/profFamilyDetails', function () use($app) {
+$app->post ( '/profFamilyDetails', 'authenticate', function () use($app) {
 	
 	// check for required params
 	verifyRequiredParams ( array (
@@ -295,7 +299,7 @@ $app->post ( '/profFamilyDetails', function () use($app) {
 	
 	jsonResponse ( 200, $response );
 } );
-	$app->post ( '/profReligionDetails', function () use($app) {
+	$app->post ( '/profReligionDetails',  'authenticate', function () use($app) {
 	
 		// check for required params
 		verifyRequiredParams ( array (
@@ -359,23 +363,69 @@ $app->post ( '/profFamilyDetails', function () use($app) {
 	
 		jsonResponse ( 200, $response );
 	} );
-function loginOpn1() {
-	global $app;
-	$req = $app->request (); // Getting parameter with names
-	$paramName = $req->params ( 'name' ); // Getting parameter with names
-	$paramPassword = $req->params ( 'password' ); // Getting parameter with names
 	
-	$sql_query = "select `name`,`email`,`mobile_number` FROM M_PROFILE_MASTER where name = '$paramName' and password = '$paramPassword' ORDER BY name";
-	try {
-		$dbCon = getConnection ();
-		$stmt = $dbCon->query ( $sql_query );
-		$users = $stmt->fetchAll ( PDO::FETCH_OBJ );
-		$dbCon = null;
-		echo '{"users": ' . json_encode ( $users ) . '}';
-	} catch ( PDOException $e ) {
-		echo '{"error":{"text":' . $e->getMessage () . '}}';
-	}
-}
+$app->post('/login', 'authenticate', function() use ($app) {
+  verifyRequiredParams(array('userName', 'password'));
+  // reading post params
+  $userName = $app->request()->post('userName');
+  $password = $app->request()->post('password');
+  $response = array();
+  $db = new DbHandler();
+  // check for correct email and password
+  if ($db->checkLogin($userName, $password)) {
+  	// get the user by email
+  	$profileMaster = new profile_master();
+  	
+  	$profileMaster = $profileMaster->getOneByAny(array(user_name=>$userName,email_id=>$userName,mobile_number=>$userName),NULL,NULL);
+  	
+  	if ($profileMaster != NULL) {
+  	 		
+  		$rndmString = generateRandomString();
+  		
+  		$tokenString = encodeAuthToken($profileMaster->getProfileId(),$rndmString);
+  		
+  		$profileLoginAuth = new profile_login_auth();
+  		
+  		$profileLoginAuth->setUserName($profileMaster->getUserName());
+  		$profileLoginAuth->setProfileId($profileMaster->getProfileId());
+  		$profileLoginAuth->setLoginTime(time());
+  		$profileLoginAuth->setLoginClientIp(get_client_ip());
+  		$profileLoginAuth->setLoginSecretKey($rndmString);
+  		$profileLoginAuth->setLoginAuthToken($tokenString);
+  		$profileLoginAuth->setLastOpuser('admin');
+  		
+  		$profileLoginAuth->save();
+  		
+  		
+  		/* if (!isset($_SESSION)) {
+  			session_start();
+  		}
+  		$_SESSION['profileId'] = $profileMaster->getProfileId();
+  		$_SESSION['email'] = $email;
+  		$_SESSION['name'] = $user['name'];
+  		
+  		$app->add(new Slim\Middleware\SessionCookie()); */
+  		
+  		$response ["status"] = "00";
+  		$response ["message"] = "PROFILE_Exists";
+  		$response ["profileMaster"] = $profileMaster;
+  		$response ["authToken"] = $profileMaster;
+  		
+  	} else {
+  		// unknown error occurred
+  		$response['error'] = true;
+  		$response['message'] = "An error occurred. Please try again";
+  	}
+  	
+  } else {
+      // user credentials are wrong
+      $response['error'] = true;
+      $response['message'] = 'Login failed. Incorrect credentials';
+  }
+  //echoResponse(200, $response);
+  jsonResponse ( 200, $response );
+  
+});
 
 $app->get ( '/getSomething/:input', function ($input) {
 	

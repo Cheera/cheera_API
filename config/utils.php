@@ -1,6 +1,7 @@
 <?php
 //require '../vendor/autoload.php';
 require_once 'Config.php';
+require_once 'Slim/Http/Util.php';
 /* if(PHP_DEBUG_MODE){
   error_reporting(-1);
   ini_set('display_errors', 'On');
@@ -72,24 +73,31 @@ function authenticate(\Slim\Route $route) {
   $response = array();
   $app = \Slim\Slim::getInstance();
   // verifying authorization header
+ 
   if (isset($headers['Authorization'])) {
-    $db = new DbHandler();
+   // $db = new DbHandler();
     // get the api key
     $api_key = $headers['Authorization'];
     // validating api key
-    if (!$db->isValidApikey($api_key)) {
-      //api key is not present in users table
+   //echo $api_key;
+    if ($api_key!='123456') {
+    	//echo '1';
+      
       $response['error'] = true;
       $response['message'] = 'Access denied. Invalid api key';
-      echoResponse(401, $response);
+     
+      jsonResponse1( 200, $response );
+     // echoResponse(401, $response);
       $app->stop();
     } else {
-      global $user_id;
+    	//echo '2';
+    	//jsonResponse1( 200, $response );
+     /*  global $user_id;
       // get user primary key id
       $user = $db->getUserId($api_key);
       if ($user != NULL) {
         $user_id = $user['id'];
-      }
+      } */
     }
   } else {
     // api key is missing in header
@@ -115,5 +123,98 @@ function j($input, $encode=true, $exit=1) {
   if($exit) {
     exit;
   }
+}
+function jsonResponse1($status_code, $response) {
+	$app = \Slim\Slim::getInstance ();
+	$app->status ( $status_code );
+	$app->contentType ( 'application/json' );
+
+	echo json_encode ( $response );
+}
+
+function generateLoginAuthToken($value, $key,$iv,$algorithm,$mode) {
+	
+
+}
+
+function encodeAuthToken($value, $secret)
+    {
+        $key = hash_hmac('sha1', $secret);
+        $iv = getIv($expires, $secret);
+        $secureString = base64_encode(
+            self::encrypt(
+                $value,
+                $key,
+                $iv,
+                array(
+                    'algorithm' => MCRYPT_RIJNDAEL_256,
+            		'mode' => MCRYPT_MODE_CBC
+                )
+            )
+        );
+        $verificationString = hash_hmac('sha1',$value, $key);
+
+        return implode('|', array($secureString, $verificationString));
+    }
+    
+function decodeAuthToken($value, $secret)
+    {
+    	if ($value) {
+    		$value = explode('|', $value);
+    		if (count($value) === 3 && ((int) $value[0] === 0 || (int) $value[0] > time())) {
+    			$key = hash_hmac('sha1', $value[0], $secret);
+    			$iv = self::getIv($value[0], $secret);
+    			$data = self::decrypt(
+    					base64_decode($value[1]),
+    					$key,
+    					$iv,
+    					 array(
+		                    'algorithm' => MCRYPT_RIJNDAEL_256,
+		            		'mode' => MCRYPT_MODE_CBC
+                )
+    			);
+    			$verificationString = hash_hmac('sha1', $value[0] . $data, $key);
+    			if ($verificationString === $value[2]) {
+    				return $data;
+    			}
+    		}
+    	}
+    
+    	return false;
+    }
+    
+function getIv($expires, $secret)
+    {
+    	$data1 = hash_hmac('sha1', 'a'.$expires.'b', $secret);
+    	$data2 = hash_hmac('sha1', 'z'.$expires.'y', $secret);
+    
+    	return pack("h*", $data1.$data2);
+    }
+function generateRandomString($length = 10) {
+    	$characters = '0123456789abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ';
+    	$charactersLength = strlen($characters);
+    	$randomString = '';
+    	for ($i = 0; $i < $length; $i++) {
+    		$randomString .= $characters[rand(0, $charactersLength - 1)];
+    	}
+    	return $randomString;
+    }
+function get_client_ip() {
+	$ipaddress = '';
+	if (getenv('HTTP_CLIENT_IP'))
+		$ipaddress = getenv('HTTP_CLIENT_IP');
+	else if(getenv('HTTP_X_FORWARDED_FOR'))
+		$ipaddress = getenv('HTTP_X_FORWARDED_FOR');
+	else if(getenv('HTTP_X_FORWARDED'))
+		$ipaddress = getenv('HTTP_X_FORWARDED');
+	else if(getenv('HTTP_FORWARDED_FOR'))
+		$ipaddress = getenv('HTTP_FORWARDED_FOR');
+	else if(getenv('HTTP_FORWARDED'))
+		$ipaddress = getenv('HTTP_FORWARDED');
+	else if(getenv('REMOTE_ADDR'))
+		$ipaddress = getenv('REMOTE_ADDR');
+	else
+		$ipaddress = 'UNKNOWN';
+	return $ipaddress;
 }
 ?>

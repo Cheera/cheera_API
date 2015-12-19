@@ -253,6 +253,60 @@ class Model {
     }
     
     /**
+     * Get a single item by a LOGICAL OR
+     */
+    
+    function getOneByAny($condition=array(),$order=NULL,$startIndex=NULL){
+    	$query = "SELECT * FROM " . static::$tableName;
+    	 
+    	if(!empty($condition)){
+    		$query .= " WHERE ";
+    		//   echo $query;
+    		foreach ($condition as $key => $value) {
+    			$query .= $key . "=".$value." OR ";
+    			//  echo $query;
+    		}
+    	}
+    	//      echo $query;
+    	$query = rtrim($query,' OR ');
+    
+    	if($order){
+    		$query .= " ORDER BY " . $order;
+    	}
+    	if($startIndex !== NULL){
+    		$query .= " LIMIT " . $startIndex . ",1";
+    	}
+    	$db = DB::getInstance();
+    	$s = $db->prepare($query);
+    	 
+    	foreach ($condition as $key => $value) {
+    		$condition[':'.$key] = $value;
+    		unset($condition[$key]);
+    	}
+    	$s->execute($condition);
+    
+    	$result = $s->fetch(PDO::FETCH_ASSOC);
+    
+    	if (is_array($result) || is_object($result))
+    	{
+    
+    		$className = get_called_class();
+    		$item = new $className();
+    		$item->createFromDb($result);
+    		 
+    		// print_r($item);
+    		return $item;
+    	}
+    
+    	else
+    	{
+    		return null;
+    	}
+    	 
+    
+    }
+    
+    /**
      * Get an item by the primarykey
      */
     function getByPrimaryKey($value){
